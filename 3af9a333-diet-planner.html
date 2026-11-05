@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>목표 맞춤 다이어트 플래너</title>
+<style>
+  :root {
+    --bg: #f5f7fa; --card: #ffffff; --text: #1f2933; --muted: #6b7785;
+    --primary: #2f7d6d; --line: #e3e8ee;
+    --warn-bg: #fff4e5; --warn: #b45309; --danger-bg: #fdecec; --danger: #b42318;
+    --ok-bg: #e8f5ef; --ok: #1d6b4f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", "Noto Sans KR", "Malgun Gothic", sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.6; }
+  header { background: var(--primary); color: #fff; padding: 28px 16px; text-align: center; }
+  header h1 { margin: 0 0 6px; font-size: 1.6rem; }
+  header p { margin: 0; opacity: .9; font-size: .95rem; }
+  main { max-width: 920px; margin: 0 auto; padding: 20px 16px 60px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 14px; font-size: 1.15rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+  input, select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 1rem; background: #fff; }
+  input:focus, select:focus { outline: 2px solid var(--primary); border-color: transparent; }
+  .hint { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+  button { background: var(--primary); color: #fff; border: 0; border-radius: 10px; padding: 14px 20px; font-size: 1.05rem;
+           font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
+  button:hover { filter: brightness(.92); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 14px; text-align: center; }
+  .stat .v { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+  .stat .l { font-size: .8rem; color: var(--muted); }
+  .alert { padding: 12px 14px; border-radius: 10px; margin-bottom: 10px; font-size: .92rem; }
+  .alert.warn { background: var(--warn-bg); color: var(--warn); }
+  .alert.danger { background: var(--danger-bg); color: var(--danger); }
+  .alert.ok { background: var(--ok-bg); color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: .82rem; }
+  .bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin: 10px 0 6px; }
+  .bar div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: .75rem; }
+  .legend { font-size: .82rem; color: var(--muted); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-weight: 600; }
+  .small { font-size: .85rem; color: var(--muted); }
+  #result { display: none; }
+  svg text { font-size: 11px; fill: var(--muted); }
+  ul { padding-left: 20px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>목표 맞춤 다이어트 플래너</h1>
+  <p>체성분과 목표를 입력하면 기간에 맞는 칼로리·영양소·운동·수면 계획을 계산해 줍니다</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. 내 정보 입력</h2>
+    <div class="grid">
+      <div><label for="sex">성별</label>
+        <select id="sex"><option value="male">남성</option><option value="female">여성</option></select></div>
+      <div><label for="age">나이 (세)</label><input id="age" type="number" value="17" min="10" max="100"></div>
+      <div><label for="height">키 (cm)</label><input id="height" type="number" value="175" min="100" max="230"></div>
+      <div><label for="weight">현재 몸무게 (kg)</label><input id="weight" type="number" step="0.1" value="70" min="30" max="250"></div>
+      <div><label for="bodyfat">체지방률 (%) - 선택</label><input id="bodyfat" type="number" step="0.1" placeholder="예: 20" min="3" max="60">
+        <div class="hint">입력하면 체지방 기반 공식(Katch-McArdle)을 사용합니다</div></div>
+      <div><label for="muscle">현재 골격근량 (kg) - 선택</label><input id="muscle" type="number" step="0.1" placeholder="예: 30"></div>
+      <div><label for="activity">평소 활동량</label>
+        <select id="activity">
+          <option value="1.2">거의 운동 안 함 (x1.2)</option>
+          <option value="1.375">주 1~3회 가벼운 운동 (x1.375)</option>
+          <option value="1.55" selected>주 3~5회 보통 운동 (x1.55)</option>
+          <option value="1.725">주 6~7회 강한 운동 (x1.725)</option>
+          <option value="1.9">매일 고강도·육체노동 (x1.9)</option>
+        </select></div>
+      <div><label for="sleep">평균 수면 시간 (시간) - 선택</label><input id="sleep" type="number" step="0.5" placeholder="예: 6.5"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. 목표 설정</h2>
+    <div class="grid">
+      <div><label for="goalWeight">목표 몸무게 (kg)</label><input id="goalWeight" type="number" step="0.1" value="65"></div>
+      <div><label for="goalMuscle">목표 골격근량 (kg) - 선택</label><input id="goalMuscle" type="number" step="0.1" placeholder="예: 31"></div>
+      <div><label for="period">목표 기간</label><input id="period" type="number" value="8" min="1">
+        <div class="hint">아래에서 단위를 선택하세요</div></div>
+      <div><label for="unit">기간 단위</label>
+        <select id="unit"><option value="7">주</option><option value="1">일</option><option value="30">개월(30일)</option></select></div>
+    </div>
+    <button id="calcBtn">계획 만들기</button>
+  </section>
+
+  <div id="result">
+    <section class="card" id="alerts"></section>
+
+    <section class="card">
+      <h2>3. 핵심 결과</h2>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section class="card">
+      <h2>4. 하루 식단 목표</h2>
+      <div id="macros"></div>
+    </section>
+
+    <section class="card">
+      <h2>5. 예상 체중 변화</h2>
+      <div id="chart"></div>
+      <p class="small">선형 추정이라 실제 체중은 수분·근육 변화 때문에 굴곡이 있을 수 있어요.</p>
+    </section>
+
+    <section class="card">
+      <h2>6. 운동 루틴 제안</h2>
+      <div id="routine"></div>
+    </section>
+
+    <section class="card">
+      <h2>7. 수면 · 근육 · 참고</h2>
+      <div id="extras"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>사용한 공식과 근거 (탐구 내용)</h2>
+    <details open><summary>계산 공식</summary>
+      <ul>
+        <li><b>BMR (Mifflin-St Jeor, 1990)</b>: 10×체중(kg) + 6.25×키(cm) − 5×나이 + (남 +5 / 여 −161)</li>
+        <li><b>BMR (Katch-McArdle)</b>: 370 + 21.6×제지방량(kg), 제지방량 = 체중×(1−체지방률)</li>
+        <li><b>TDEE</b> = BMR × 활동계수 (하루 총 소비 열량 추정)</li>
+        <li><b>체중 1kg ≈ 7,700kcal</b> 가정으로 하루 필요 증감 열량 계산 (감량은 열량 부족분 / 증량은 잉여분)</li>
+        <li><b>운동 소모량</b> = MET × 체중(kg) × 시간(h), MET는 신체활동 종합 지침(Compendium of Physical Activities)의 대표값 사용</li>
+      </ul>
+    </details>
+    <details><summary>안전 기준 (이 프로그램의 판단 기준)</summary>
+      <ul>
+        <li>주당 감량이 체중의 약 0.5~1%를 넘으면 경고하고, 1%를 넘으면 위험 경고를 표시합니다.</li>
+        <li>하루 섭취 열량이 최소선(남 1,500 / 여 1,200 kcal)보다 낮아지면 최소선으로 보정하고, 보정된 달성 기간을 알려줍니다.</li>
+        <li>단백질은 감량 시 체중 1kg당 약 2.0g, 유지·증량 시 약 1.6~1.8g, 지방은 총열량의 25%, 나머지는 탄수화물로 배분합니다.</li>
+      </ul>
+    </details>
+    <details><summary>한계점</summary>
+      <ul>
+        <li>7,700kcal 규칙은 근사값이며, 감량이 진행될수록 대사량이 줄어 실제 속도는 느려질 수 있습니다.</li>
+        <li>활동계수는 주관적 선택이라 오차가 크고, 체지방률·골격근량 측정값(인바디 등)도 측정 조건에 따라 오차가 있습니다.</li>
+        <li>체중 감량과 근육 증가를 동시에 하는 것(체성분 재구성)은 초보자나 체지방이 높은 경우에 주로 가능하고, 일반적으로 제한적입니다.</li>
+        <li>이 프로그램은 교육용 계산 도구이며 의학적 진단·처방이 아닙니다. 성장기 청소년이나 질환이 있는 사람은 의사·영양사와 상담하세요.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<script>
+// ==== LOGIC START ====
+// 계산 로직 (화면과 분리). 입력값은 모두 숫자이며, 각 함수는 순수 함수라 손계산으로 검증할 수 있다.
+
+const KCAL_PER_KG = 7700;                       // 체지방 1kg 당 약 7,700kcal (근사값)
+const MIN_CALORIES = { male: 1500, female: 1200 }; // 하루 섭취 최소선
+
+// Mifflin-St Jeor 공식
+function bmrMifflin(sex, weight, height, age) {
+  return 10 * weight + 6.25 * height - 5 * age + (sex === 'male' ? 5 : -161);
+}
+
+// Katch-McArdle 공식 (체지방률 필요)
+function bmrKatch(weight, bodyFatPct) {
+  const leanMass = weight * (1 - bodyFatPct / 100);
+  return 370 + 21.6 * leanMass;
+}
+
+// 하루 총 소비 열량
+function calcTdee(bmr, activityFactor) {
+  return bmr * activityFactor;
+}
+
+// 하루 열량 증감 (음수 = 부족분/감량, 양수 = 잉여분/증량)
+function dailyDelta(currentWeight, goalWeight, days) {
+  return ((goalWeight - currentWeight) * KCAL_PER_KG) / days;
+}
+
+// 주당 체중 변화 (kg/주)
+function weeklyChange(currentWeight, goalWeight, days) {
+  return ((goalWeight - currentWeight) / days) * 7;
+}
+
+// 몸무게 대비 안전한 최소 기간(일): 주당 변화율 1% 기준
+function minSafeDays(currentWeight, goalWeight) {
+  const diff = Math.abs(goalWeight - currentWeight);
+  return Math.ceil((diff / (currentWeight * 0.01)) * 7);
+}
+
+// 영양소 계산: 단백질 g/kg, 지방은 열량의 25%, 탄수화물은 나머지
+function calcMacros(targetCalories, weight, proteinPerKg) {
+  const proteinG = proteinPerKg * weight;
+  const fatG = (targetCalories * 0.25) / 9;
+  const carbG = Math.max(0, (targetCalories - proteinG * 4 - fatG * 9) / 4);
+  return { proteinG, fatG, carbG };
+}
+
+// 운동 소모 열량 = MET x 체중 x 시간(h)
+function exerciseKcal(met, weight, minutes) {
+  return met * weight * (minutes / 60);
+}
+
+// 종합 계획 계산
+function buildPlan(input) {
+  const { sex, age, height, weight, bodyFat, muscle, activity, goalWeight, goalMuscle, days, sleep } = input;
+
+  const mifflin = bmrMifflin(sex, weight, height, age);
+  const katch = bodyFat ? bmrKatch(weight, bodyFat) : null;
+  const bmr = katch !== null ? katch : mifflin;
+  const tdee = calcTdee(bmr, activity);
+
+  const diff = goalWeight - weight;
+  const mode = Math.abs(diff) < 0.3 ? 'maintain' : diff < 0 ? 'cut' : 'bulk';
+  const delta = mode === 'maintain' ? 0 : dailyDelta(weight, goalWeight, days);
+  const rawTarget = tdee + delta;
+  const weekly = weeklyChange(weight, goalWeight, days);
+  const weeklyPct = Math.abs(weekly) / weight * 100;
+
+  const alerts = [];
+  let target = rawTarget;
+  let effectiveDays = days;
+
+  if (age < 19) {
+    alerts.push({ type: 'warn', text: '성장기(만 19세 미만)에는 무리한 감량이 성장과 건강에 영향을 줄 수 있어요. 이 결과는 참고용으로만 쓰고, 실제 식단 조절은 의사·영양사와 상의하세요.' });
+  }
+
+  if (mode === 'cut') {
+    if (weeklyPct > 1) {
+      alerts.push({ type: 'danger', text: `주당 ${Math.abs(weekly).toFixed(2)}kg(체중의 ${weeklyPct.toFixed(1)}%) 감량은 너무 빠른 속도예요. 근손실과 건강 문제 위험이 커집니다. 안전한 최소 기간은 약 ${minSafeDays(weight, goalWeight)}일(${(minSafeDays(weight, goalWeight) / 7).toFixed(1)}주)입니다.` });
+    } else if (weeklyPct > 0.75) {
+      alerts.push({ type: 'warn', text: `주당 체중의 ${weeklyPct.toFixed(2)}% 감량으로 다소 공격적인 속도예요. 근손실을 막으려면 단백질과 근력운동이 중요합니다.` });
+    } else {
+      alerts.push({ type: 'ok', text: `주당 ${Math.abs(weekly).toFixed(2)}kg(체중의 ${weeklyPct.toFixed(2)}%) 감량으로 무리 없는 속도예요.` });
+    }
+    const floor = MIN_CALORIES[sex];
+    if (rawTarget < floor) {
+      target = floor;
+      const realDelta = floor - tdee;
+      effectiveDays = Math.ceil(Math.abs(diff) * KCAL_PER_KG / Math.abs(realDelta));
+      alerts.push({ type: 'danger', text: `계산된 섭취 열량(${Math.round(rawTarget)}kcal)이 최소선(${floor}kcal)보다 낮아 최소선으로 보정했어요. 이 경우 목표 달성에는 약 ${effectiveDays}일이 필요합니다.` });
+    }
+    if (Math.abs(delta) > 1000) {
+      alerts.push({ type: 'warn', text: `하루 ${Math.round(Math.abs(delta))}kcal의 열량 부족은 지속하기 어려운 수준이에요. 기간을 늘리는 것을 추천합니다.` });
+    }
+  } else if (mode === 'bulk') {
+    if (weeklyPct > 0.5) {
+      alerts.push({ type: 'warn', text: `주당 체중 ${weeklyPct.toFixed(2)}% 증량은 빠른 편이라 근육보다 체지방으로 늘어날 비중이 커질 수 있어요.` });
+    } else {
+      alerts.push({ type: 'ok', text: `주당 ${weekly.toFixed(2)}kg 증량으로 적절한 속도예요.` });
+    }
+  } else {
+    alerts.push({ type: 'ok', text: '목표 체중이 현재와 거의 같아 체중 유지(리컴포지션) 계획으로 계산했어요.' });
+  }
+
+  // 근육 목표 평가
+  let muscleNote = null;
+  if (muscle && goalMuscle) {
+    const gain = goalMuscle - muscle;
+    const months = days / 30;
+    if (gain > 0) {
+      const perMonth = gain / months;
+      if (perMonth > 1) {
+        muscleNote = { type: 'danger', text: `골격근 ${gain.toFixed(1)}kg을 ${months.toFixed(1)}개월에 늘리려면 월 ${perMonth.toFixed(2)}kg 증가가 필요해요. 이는 일반적인 기대치(초보자 월 약 0.5~1kg 이하, 숙련자는 더 낮음)를 넘는 목표예요.` };
+      } else if (mode === 'cut') {
+        muscleNote = { type: 'warn', text: `감량하면서 골격근을 ${gain.toFixed(1)}kg 늘리는 것은 초보자나 체지방이 높은 경우가 아니면 어려울 수 있어요. 근력운동과 충분한 단백질로 근육 유지가 현실적인 1차 목표입니다.` };
+      } else {
+        muscleNote = { type: 'ok', text: `월 약 ${perMonth.toFixed(2)}kg의 골격근 증가 목표로, 현실적인 범위입니다.` };
+      }
+    } else if (gain < 0) {
+      muscleNote = { type: 'warn', text: '목표 골격근량이 현재보다 낮아요. 보통 근육은 유지하고 체지방을 줄이는 것이 목표가 됩니다.' };
+    } else {
+      muscleNote = { type: 'ok', text: '골격근량을 유지하는 목표입니다. 근력운동과 충분한 단백질이 핵심이에요.' };
+    }
+  }
+
+  // 단백질 기준
+  let proteinPerKg = mode === 'cut' ? 2.0 : 1.6;
+  if (goalMuscle && muscle && goalMuscle > muscle) proteinPerKg = Math.max(proteinPerKg, 1.8);
+  const macros = calcMacros(target, weight, proteinPerKg);
+
+  // 수면 권장
+  const sleepRange = age < 18 ? [8, 10] : [7, 9];
+  let sleepNote = null;
+  if (sleep) {
+    if (sleep < sleepRange[0]) {
+      sleepNote = { type: 'warn', text: `평균 수면(${sleep}시간)이 권장 범위(${sleepRange[0]}~${sleepRange[1]}시간)보다 짧아요. 수면 부족은 식욕 조절과 운동 후 회복에 불리하게 작용한다고 알려져 있어요.` };
+    } else if (sleep > sleepRange[1]) {
+      sleepNote = { type: 'ok', text: `수면 시간이 권장 범위보다 길어요. 수면의 질도 함께 확인해 보세요.` };
+    } else {
+      sleepNote = { type: 'ok', text: `수면 시간이 권장 범위(${sleepRange[0]}~${sleepRange[1]}시간) 안에 있어요.` };
+    }
+  }
+
+  return { mifflin, katch, bmr, tdee, mode, delta, rawTarget, target, weekly, weeklyPct,
+           effectiveDays, alerts, muscleNote, sleepNote, sleepRange, proteinPerKg, macros };
+}
+
+// 운동 종류별 대표 MET (신체활동 종합 지침의 대표값 근사)
+const EXERCISES = [
+  { name: '빠르게 걷기', met: 4.3 },
+  { name: '조깅', met: 7.0 },
+  { name: '자전거(보통)', met: 6.8 },
+  { name: '수영(보통)', met: 6.0 },
+  { name: '근력운동(보통 강도)', met: 3.5 },
+  { name: '고강도 인터벌(HIIT)', met: 8.0 }
+];
+// ==== LOGIC END ====
+
+// ===== 화면 처리 (아래부터는 UI) =====
+const $ = (id) => document.getElementById(id);
+const num = (id) => { const v = parseFloat($(id).value); return isNaN(v) ? null : v; };
+const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
+
+function render(plan, input) {
+  $('result').style.display = 'block';
+
+  // 경고/안내
+  const all = [...plan.alerts];
+  $('alerts').innerHTML = '<h2>안전 점검</h2>' + all.map(a => `<div class="alert ${a.type}">${a.text}</div>`).join('');
+
+  // 핵심 수치
+  const modeLabel = { cut: '감량', bulk: '증량', maintain: '유지' }[plan.mode];
+  const stats = [
+    [fmt(plan.bmr), `기초대사량 (${plan.katch !== null ? 'Katch-McArdle' : 'Mifflin-St Jeor'})`],
+    [fmt(plan.tdee), '하루 총 소비 열량 (TDEE)'],
+    [fmt(plan.target), `하루 목표 섭취 열량 (${modeLabel})`],
+    [(plan.weekly > 0 ? '+' : '') + plan.weekly.toFixed(2) + ' kg', '주당 체중 변화'],
+    [plan.effectiveDays + '일', plan.effectiveDays !== input.days ? '보정된 목표 달성 기간' : '목표 기간']
+  ];
+  $('stats').innerHTML = stats.map(s => `<div class="stat"><div class="v">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('');
+
+  // 영양소
+  const m = plan.macros;
+  const pK = m.proteinG * 4, fK = m.fatG * 9, cK = m.carbG * 4, tot = pK + fK + cK || 1;
+  const meals = [['아침', .25], ['점심', .35], ['저녁', .30], ['간식', .10]];
+  $('macros').innerHTML = `
+    <div class="bar">
+      <div style="width:${pK / tot * 100}%;background:#2f7d6d">단백질</div>
+      <div style="width:${cK / tot * 100}%;background:#e0a526">탄수화물</div>
+      <div style="width:${fK / tot * 100}%;background:#c75b39">지방</div>
+    </div>
+    <div class="legend">단백질 기준: 체중 1kg당 ${plan.proteinPerKg}g</div>
+    <table style="margin-top:10px">
+      <tr><th>영양소</th><th>하루 목표</th><th>열량</th></tr>
+      <tr><td>단백질</td><td>${fmt(m.proteinG)} g</td><td>${fmt(pK)} kcal</td></tr>
+      <tr><td>탄수화물</td><td>${fmt(m.carbG)} g</td><td>${fmt(cK)} kcal</td></tr>
+      <tr><td>지방</td><td>${fmt(m.fatG)} g</td><td>${fmt(fK)} kcal</td></tr>
+    </table>
+    <table style="margin-top:14px">
+      <tr><th>끼니</th><th>열량</th><th>단백질</th></tr>
+      ${meals.map(x => `<tr><td>${x[0]}</td><td>${fmt(plan.target * x[1])} kcal</td><td>${fmt(m.proteinG * x[1])} g</td></tr>`).join('')}
+    </table>`;
+
+  // 체중 그래프 (SVG)
+  const weeks = Math.max(1, Math.ceil(plan.effectiveDays / 7));
+  const pts = [];
+  for (let w = 0; w <= weeks; w++) {
+    const frac = Math.min(1, (w * 7) / plan.effectiveDays);
+    pts.push(input.weight + (input.goalWeight - input.weight) * frac);
+  }
+  const W = 640, H = 220, pad = 40;
+  const minY = Math.min(...pts) - 1, maxY = Math.max(...pts) + 1;
+  const x = (i) => pad + (i / weeks) * (W - pad * 2);
+  const y = (v) => H - pad - ((v - minY) / (maxY - minY || 1)) * (H - pad * 2);
+  const path = pts.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const step = Math.ceil(weeks / 8);
+  const ticks = pts.map((v, i) => i % step === 0 || i === weeks ? `<text x="${x(i)}" y="${H - 14}" text-anchor="middle">${i}주</text>` : '').join('');
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="예상 체중 변화 그래프">
+    <line x1="${pad}" y1="${H - pad}" x2="${W - pad}" y2="${H - pad}" stroke="#cfd6de"/>
+    <line x1="${pad}" y1="${pad - 10}" x2="${pad}" y2="${H - pad}" stroke="#cfd6de"/>
+    <path d="${path}" fill="none" stroke="#2f7d6d" stroke-width="3"/>
+    <circle cx="${x(0)}" cy="${y(pts[0])}" r="4" fill="#2f7d6d"/>
+    <circle cx="${x(weeks)}" cy="${y(pts[weeks])}" r="4" fill="#2f7d6d"/>
+    <text x="${x(0) + 8}" y="${y(pts[0]) - 8}">${pts[0].toFixed(1)}kg</text>
+    <text x="${x(weeks) - 8}" y="${y(pts[weeks]) - 8}" text-anchor="end">${pts[weeks].toFixed(1)}kg</text>
+    ${ticks}
+  </svg>`;
+
+  // 운동 루틴
+  const weekPlans = {
+    cut: [['월', '전신 근력운동 (45~60분)'], ['화', '빠르게 걷기 또는 가벼운 유산소 (30~40분)'], ['수', '하체 중심 근력운동'], ['목', '휴식 또는 스트레칭'], ['금', '상체 중심 근력운동'], ['토', '조깅·자전거 등 유산소 (30~40분)'], ['일', '휴식']],
+    bulk: [['월', '가슴·삼두 근력운동'], ['화', '등·이두 근력운동'], ['수', '휴식 또는 가벼운 걷기'], ['목', '하체 근력운동'], ['금', '어깨·복근 근력운동'], ['토', '가벼운 유산소 (20분)'], ['일', '휴식']],
+    maintain: [['월', '전신 근력운동'], ['화', '유산소 (30분)'], ['수', '휴식'], ['목', '전신 근력운동'], ['금', '유산소 (30분)'], ['토', '자유 운동·스포츠'], ['일', '휴식']]
+  }[plan.mode];
+  $('routine').innerHTML = `
+    <table><tr><th>요일</th><th>운동</th></tr>${weekPlans.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>
+    <p class="small" style="margin-top:12px">운동별 30분 예상 소모 열량 (내 체중 ${input.weight}kg 기준)</p>
+    <table><tr><th>운동</th><th>MET</th><th>30분 소모</th></tr>
+      ${EXERCISES.map(e => `<tr><td>${e.name}</td><td>${e.met}</td><td>${fmt(exerciseKcal(e.met, input.weight, 30))} kcal</td></tr>`).join('')}
+    </table>
+    <p class="small">루틴은 일반적인 예시이며 개인의 숙련도·부상 이력에 맞게 조정이 필요해요.</p>`;
+
+  // 수면·근육
+  let extras = `<div class="alert ok">권장 수면: 하루 ${plan.sleepRange[0]}~${plan.sleepRange[1]}시간</div>`;
+  if (plan.sleepNote) extras += `<div class="alert ${plan.sleepNote.type}">${plan.sleepNote.text}</div>`;
+  if (plan.muscleNote) extras += `<div class="alert ${plan.muscleNote.type}">${plan.muscleNote.text}</div>`;
+  $('extras').innerHTML = extras;
+
+  $('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+$('calcBtn').addEventListener('click', () => {
+  const unit = parseInt($('unit').value, 10);
+  const period = num('period');
+  const required = { age: num('age'), height: num('height'), weight: num('weight'), goalWeight: num('goalWeight'), period };
+  for (const k in required) {
+    if (required[k] === null || required[k] <= 0) { alert('필수 항목(나이, 키, 몸무게, 목표 몸무게, 기간)을 올바르게 입력하세요.'); return; }
+  }
+  const input = {
+    sex: $('sex').value, age: required.age, height: required.height, weight: required.weight,
+    bodyFat: num('bodyfat'), muscle: num('muscle'), activity: parseFloat($('activity').value),
+    goalWeight: required.goalWeight, goalMuscle: num('goalMuscle'),
+    days: Math.max(1, Math.round(period * unit)), sleep: num('sleep')
+  };
+  render(buildPlan(input), input);
+});
+</script>
+</body>
+</html>
